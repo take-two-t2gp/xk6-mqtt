@@ -57,18 +57,17 @@ export default function () {
     } else {
         const response = http.post("https://social-service-loadtesting-api.d2dragon.net/v1/auth/login",JSON.stringify({
             "locale": "en-US",
-            "email": "ctpshared+1594406123868@gmail.com",
-            "password": "D2CTesting"
+            "email": "<<DNA Test Account Email>>",
+            "password": "<<DNA Test Account Password>>"
         }))
-        console.log(response.json()['account_id'])
         try {
             pub_client = connect(
                 // The list of URL of  MQTT server to connect to
                 [host + ":" + port],
                 // A username to authenticate to the MQTT server
-                response.json()['account_id'],
+                response.json()['accountId'],
                 // Password to match username
-                response.json()['access_token'],
+                response.json()['accessToken'],
                 // clean session setting
                 false,
                 // Client id for reader
