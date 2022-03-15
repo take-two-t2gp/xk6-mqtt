@@ -19,21 +19,24 @@ To build a `k6` binary with this extension, first ensure you have the prerequisi
 Then, install [xk6](https://github.com/grafana/xk6) and build your custom k6 binary with the Mqtt extension:
 
 1. Install `xk6`:
-  ```shell
-  $ go install go.k6.io/xk6/cmd/xk6@latest
-  ```
+
+```shell
+$ go install go.k6.io/xk6/cmd/xk6@latest
+```
 
 2. Build the binary: from latest version
-  ```shell
-  $ xk6 build --with github.com/pmalhaire/xk6-mqtt@latest
-  ```
+
+```shell
+$ xk6 build --with github.com/take-two-t2gp/xk6-mqtt@latest
+```
 
 3. Build the binary: from source code
-  ```shell
-  git clone github.com/pmalhaire/xk6-mqtt
-  cd xk6-mqtt
-  $ xk6 build --with github.com/pmalhaire/xk6-mqtt=.
-  ```
+
+```shell
+git clone github.com/pmalhaire/xk6-mqtt
+cd xk6-mqtt
+$ xk6 build --with github.com/pmalhaire/xk6-mqtt=.
+```
 
 ## Run & Test
 
@@ -49,8 +52,8 @@ docker run -p 1883:1883 -e "DOCKER_VERNEMQ_ACCEPT_EULA=yes" -e DOCKER_VERNEMQ_AL
 
 The [test file](test.js) does the following.
 
-
 Creates per VU (concurrent clients) :
+
 - one topic
 - one subscribe connection (done at first iteration)
 - one publish connection (done at first iteration)
@@ -69,10 +72,10 @@ You can run the test using the following command:
 And here's the test result output:
 
 ```bash
-          /\      |‾‾| /‾‾/   /‾‾/   
-     /\  /  \     |  |/  /   /  /    
-    /  \/    \    |     (   /   ‾‾\  
-   /          \   |  |\  \ |  (‾)  | 
+          /\      |‾‾| /‾‾/   /‾‾/
+     /\  /  \     |  |/  /   /  /
+    /  \/    \    |     (   /   ‾‾\
+   /          \   |  |\  \ |  (‾)  |
   / __________ \  |__| \__\ \_____/ .io
 
   execution: local
@@ -95,13 +98,13 @@ default ✓ [======================================] 50 VUs  1m0s
 
      █ teardown
 
-     checks...............: 100.00% ✓ 3422034 ✗ 0   
+     checks...............: 100.00% ✓ 3422034 ✗ 0
      data_received........: 0 B     0 B/s
      data_sent............: 0 B     0 B/s
      iteration_duration...: avg=5.25ms min=5.96µs med=4.49ms max=59.65ms p(90)=7.39ms p(95)=11.6ms
      iterations...........: 570339  9504.706041/s
-     publish_time.........: avg=1.73ms min=0s     med=1ms    max=41ms    p(90)=3ms    p(95)=4ms   
-     subscribe_time.......: avg=2.86ms min=0s     med=2ms    max=43ms    p(90)=4ms    p(95)=6ms   
+     publish_time.........: avg=1.73ms min=0s     med=1ms    max=41ms    p(90)=3ms    p(95)=4ms
+     subscribe_time.......: avg=2.86ms min=0s     med=2ms    max=43ms    p(90)=4ms    p(95)=6ms
      vus..................: 50      min=50    max=50
      vus_max..............: 50      min=50    max=50
 
