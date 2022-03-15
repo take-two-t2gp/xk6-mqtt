@@ -19,7 +19,7 @@ type Mqtt struct {
 func (*Mqtt) Connect(
 	ctx context.Context,
 	// The list of URL of  MQTT server to connect to
-	servers []*url.URL,
+	servers []string,
 	// A username to authenticate to the MQTT server
 	user,
 	// Password to match username
@@ -41,10 +41,17 @@ func (*Mqtt) Connect(
 		common.Throw(common.GetRuntime(ctx), ErrorState)
 		return nil
 	}
+	urls := make([]*url.URL, len(servers))
+	for i,v := range servers {
+		urls[i], _ = url.Parse(v)
+	}
+	print(urls)
+	// var servers_urls := []*url.URL
 	opts := autopaho.ClientConfig{
-		BrokerUrls: servers,
+		BrokerUrls: urls,
 		KeepAlive: 5,
 		ConnectRetryDelay: 5,
+		Debug:             paho.NOOPLogger{},
 		OnConnectionUp:    func(cm *autopaho.ConnectionManager, connAck *paho.Connack) {
 			fmt.Println("mqtt connection up")
 			if _, err := cm.Subscribe(context.Background(), &paho.Subscribe{
@@ -52,16 +59,19 @@ func (*Mqtt) Connect(
 					topic: {QoS: 0},
 				},
 			}); err != nil {
+				common.Throw(common.GetRuntime(ctx), ErrorSubscribe)
 				fmt.Printf("failed to subscribe (%s). This is likely to mean no messages will be received.", err)
 				return
 			}
 			fmt.Println("mqtt subscription made")
 		},
-		OnConnectError:    func(err error) { fmt.Printf("error whilst attempting connection: %s\n", err) },
+		OnConnectError:    func(err error) {
+			common.Throw(common.GetRuntime(ctx), ErrorClient)
+			fmt.Printf("error whilst attempting connection: %s\n", err)
+		},
 
 		ClientConfig: paho.ClientConfig{
 			ClientID:      clientid,
-			OnClientError: func(err error) { fmt.Printf("server requested disconnect: %s\n", err) },
 			OnServerDisconnect: func(d *paho.Disconnect) {
 				if d.Properties != nil {
 					fmt.Printf("server requested disconnect: %s\n", d.Properties.ReasonString)
