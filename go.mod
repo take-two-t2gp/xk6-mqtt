@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/dustin/go-humanize v1.0.1-0.20200219035652-afde56e7acac // indirect
+	github.com/eclipse/paho.golang v0.10.0 // indirect
 	github.com/eclipse/paho.mqtt.golang v1.3.2
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
 	github.com/onsi/ginkgo v1.15.0 // indirect

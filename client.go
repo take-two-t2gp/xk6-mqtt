@@ -2,12 +2,11 @@ package mqtt
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"os"
-	"time"
+	"fmt"
+	"net/url"
 
-	paho "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.golang/autopaho"
+	"github.com/eclipse/paho.golang/paho"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/lib"
 )
@@ -20,11 +19,13 @@ type Mqtt struct {
 func (*Mqtt) Connect(
 	ctx context.Context,
 	// The list of URL of  MQTT server to connect to
-	servers []string,
+	servers []*url.URL,
 	// A username to authenticate to the MQTT server
 	user,
 	// Password to match username
 	password string,
+	// Topic
+	topic string,
 	// clean session setting
 	cleansess bool,
 	// Client id for reader
@@ -34,55 +35,66 @@ func (*Mqtt) Connect(
 	// path to local cert
 	certPath string,
 
-) paho.Client {
+) *autopaho.ConnectionManager {
 	state := lib.GetState(ctx)
 	if state == nil {
 		common.Throw(common.GetRuntime(ctx), ErrorState)
 		return nil
 	}
-	opts := paho.NewClientOptions()
-	// Use local cert if specified
-	if len(certPath) > 0 {
-		mqtt_tls_ca, err := os.ReadFile(certPath)
-		if err != nil {
-			panic(err)
-		}
+	opts := autopaho.ClientConfig{
+		BrokerUrls: servers,
+		KeepAlive: 5,
+		ConnectRetryDelay: 5,
+		OnConnectionUp:    func(cm *autopaho.ConnectionManager, connAck *paho.Connack) {
+			fmt.Println("mqtt connection up")
+			if _, err := cm.Subscribe(context.Background(), &paho.Subscribe{
+				Subscriptions: map[string]paho.SubscribeOptions{
+					topic: {QoS: 0},
+				},
+			}); err != nil {
+				fmt.Printf("failed to subscribe (%s). This is likely to mean no messages will be received.", err)
+				return
+			}
+			fmt.Println("mqtt subscription made")
+		},
+		OnConnectError:    func(err error) { fmt.Printf("error whilst attempting connection: %s\n", err) },
 
-		root_ca := x509.NewCertPool()
-		load_ca := root_ca.AppendCertsFromPEM([]byte(mqtt_tls_ca))
-		if !load_ca {
-			panic("failed to parse root certificate")
-		}
-		tlsConfig := &tls.Config{RootCAs: root_ca}
-		opts.SetTLSConfig(tlsConfig)
+		ClientConfig: paho.ClientConfig{
+			ClientID:      clientid,
+			OnClientError: func(err error) { fmt.Printf("server requested disconnect: %s\n", err) },
+			OnServerDisconnect: func(d *paho.Disconnect) {
+				if d.Properties != nil {
+					fmt.Printf("server requested disconnect: %s\n", d.Properties.ReasonString)
+				} else {
+					fmt.Printf("server requested disconnect; reason code: %d\n", d.ReasonCode)
+				}
+			},
+		},
 	}
+	opts.SetUsernamePassword(user, []byte(password))
+	opts.SetWillMessage(fmt.Sprintf("lwt/%s", user),[]byte("{ \"status\": \"offline\", \"exit\": \"unclean\" }"),0,false)
 
-	for i := range servers {
-		opts.AddBroker(servers[i])
-	}
-	opts.SetClientID(clientid)
-	opts.SetUsername(user)
-	opts.SetPassword(password)
-	opts.SetCleanSession(cleansess)
-	client := paho.NewClient(opts)
-	token := client.Connect()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	if !token.WaitTimeout(time.Duration(timeout) * time.Millisecond) {
-		common.Throw(common.GetRuntime(ctx), ErrorTimeout)
-		return nil
+	cm, err := autopaho.NewConnection(ctx, opts)
+	if err != nil {
+		panic(err)
 	}
-	if token.Error() != nil {
-		common.Throw(common.GetRuntime(ctx), ErrorClient)
-		return nil
+	err = cm.AwaitConnection(ctx)
+
+	if err != nil {
+		fmt.Printf("Failed to connect. (%s)\n", err)
+		panic(err)
 	}
-	return client
+	return cm
 }
 
 // Close the given client
 func (*Mqtt) Close(
 	ctx context.Context,
 	// Mqtt client to be closed
-	client paho.Client,
+	cm *autopaho.ConnectionManager,
 	// timeout ms
 	timeout uint,
 ) {
@@ -91,6 +103,6 @@ func (*Mqtt) Close(
 		common.Throw(common.GetRuntime(ctx), ErrorState)
 		return
 	}
-	client.Disconnect(timeout)
+	cm.Disconnect(ctx)
 	return
 }

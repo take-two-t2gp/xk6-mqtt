@@ -2,9 +2,9 @@ package mqtt
 
 import (
 	"context"
-	"time"
 
-	paho "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.golang/autopaho"
+	"github.com/eclipse/paho.golang/paho"
 	"go.k6.io/k6/js/common"
 	"go.k6.io/k6/lib"
 )
@@ -12,7 +12,7 @@ import (
 // Publish allow to publish one message
 func (*Mqtt) Publish(
 	ctx context.Context,
-	client paho.Client,
+	cm *autopaho.ConnectionManager,
 	topic string,
 	qos int,
 	message string,
@@ -24,20 +24,22 @@ func (*Mqtt) Publish(
 		common.Throw(common.GetRuntime(ctx), ErrorState)
 		return
 	}
-	if client == nil {
+	if cm == nil {
 		common.Throw(common.GetRuntime(ctx), ErrorClient)
 		return
 	}
 
-	token := client.Publish(topic, byte(qos), retain, message)
-	if !token.WaitTimeout(time.Duration(timeout) * time.Millisecond) {
-		common.Throw(common.GetRuntime(ctx), ErrorTimeout)
-		return
-	}
-	if err := token.Error(); err != nil {
+	pr, err := cm.Publish(ctx, &paho.Publish{
+		QoS: 0,
+		Topic: topic,
+		Payload: []byte(message),
+	})
+
+	if err != nil {
 		common.Throw(common.GetRuntime(ctx), ErrorPublish)
 		return
+	} else if pr.ReasonCode != 0 && pr.ReasonCode != 16 {
+		common.Throw(common.GetRuntime(ctx), ErrorPublish)
 	}
-
 	return
 }
